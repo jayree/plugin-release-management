@@ -81,7 +81,7 @@ abstract class Repository extends AsyncOptionalCreatable<RepositoryOptions> {
 
   public async writeNpmToken(): Promise<void> {
     const home = this.env.getString('HOME') ?? os.homedir();
-    await this.registry.setNpmAuth(home);
+    // await this.registry.setNpmAuth(home);
     await this.registry.setNpmRegistry(home);
   }
 

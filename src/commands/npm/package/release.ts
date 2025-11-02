@@ -65,6 +65,10 @@ export default class Release extends SfCommand<ReleaseResult> {
     githubtag: Flags.string({
       summary: messages.getMessage('flags.githubtag.summary'),
     }),
+    oidc: Flags.boolean({
+      default: false,
+      summary: messages.getMessage('flags.oidc.summary'),
+    }),
   };
 
   public async run(): Promise<ReleaseResult> {
