@@ -28,7 +28,7 @@ given a github tag, release the version specified in the package.json as is. Use
 
 # flags.oidc.summary
 
-oidc
+enable OpenID Connect (OIDC) authentication for secure, token-based package publishing on npm
 
 # flags.prerelease.summary
 

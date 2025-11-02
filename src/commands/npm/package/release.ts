@@ -86,6 +86,7 @@ export default class Release extends SfCommand<ReleaseResult> {
     const pkg = await PackageRepo.create({
       ux: new Ux({ jsonEnabled: this.jsonEnabled() }),
       useprerelease: flags.prerelease,
+      useoidc: flags.oidc,
     });
 
     await pkg.writeNpmToken();
