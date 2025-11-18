@@ -78,6 +78,10 @@ export default class Release extends SfCommand<ReleaseResult> {
       default: false,
       summary: messages.getMessage('flags.trusted-publishing.summary'),
     }),
+    oidc: Flags.boolean({
+      default: false,
+      summary: messages.getMessage('flags.oidc.summary'),
+    }),
   };
 
   public async run(): Promise<ReleaseResult> {
@@ -95,6 +99,7 @@ export default class Release extends SfCommand<ReleaseResult> {
     const pkg = await PackageRepo.create({
       ux: new Ux({ jsonEnabled: this.jsonEnabled() }),
       useprerelease: flags.prerelease,
+      useoidc: flags.oidc,
     });
 
     // With Trusted Publishing (OIDC) npm authenticates via the CI identity, so no token is written.
