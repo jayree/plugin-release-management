@@ -27,7 +27,6 @@ test_session*
 docs
 
 # ignore sfdx-trust files
-*.tgz
 *.sig
 package.json.bak.
 
