@@ -1,0 +1,147 @@
+name: Update release-management package
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 6' # Jeden Samstag 03:00 UTC
+
+permissions:
+  contents: write
+
+env:
+  MAIN_BRANCH: main
+  WORK_BRANCH: oidc
+  PACKAGE_FIXED: salesforce-plugin-release-management.tgz
+  PACKAGE_GLOB: salesforce-plugin-release-management-*.tgz
+  COMMIT_MSG: 'chore: update package'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Ensure upstream remote
+        run: |
+          if git remote get-url upstream >/dev/null 2>&1; then
+            echo "upstream exists: $(git remote get-url upstream)"
+          else
+            git remote add upstream https://github.com/salesforcecli/plugin-release-management
+            echo "upstream added"
+          fi
+
+      - name: Fetch upstream
+        run: |
+          git fetch upstream
+
+      # ---- EARLY EXIT: stop workflow if upstream has nothing new vs origin/main ----
+      - name: Check if upstream has new commits
+        id: upstream_check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Origin main SHA:   $(git rev-parse origin/${WORK_BRANCH})"
+          echo "Upstream main SHA: $(git rev-parse upstream/${MAIN_BRANCH})"
+
+          # If upstream/main is already fully contained in origin/main, there's nothing to do
+          if git merge-base --is-ancestor upstream/${MAIN_BRANCH} origin/${WORK_BRANCH}; then
+            echo "No new commits in upstream. Nothing to rebase."
+            echo "should_continue=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Upstream has new commits. Continuing."
+          echo "should_continue=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout main and rebase onto upstream/main
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          git rebase "upstream/${MAIN_BRANCH}"
+
+      - name: Install dependencies
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          yarn install
+
+      - name: Build
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          yarn build
+
+      - name: Test
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          yarn test
+
+      - name: Pack (yarn pack)
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          yarn pack
+
+      - name: Rename package to stable name
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Entferne Ziel, falls vorhanden
+          if [[ -f "${PACKAGE_FIXED}" ]]; then
+            rm -f "${PACKAGE_FIXED}"
+          fi
+
+          # Glob sicher auswerten (bash-Variante zu zsh (N))
+          shopt -s nullglob
+          matches=( ${PACKAGE_GLOB} )
+
+          if (( ${#matches[@]} == 0 )); then
+            echo "Keine Datei gefunden, die auf '${PACKAGE_GLOB}' passt."
+            echo "Aktuelle .tgz Dateien:"
+            ls -la *.tgz 2>/dev/null || true
+            exit 1
+          fi
+
+          if (( ${#matches[@]} > 1 )); then
+            echo "Mehrere Dateien passen auf '${PACKAGE_GLOB}':"
+            for f in "${matches[@]}"; do
+              echo "  - $f"
+            done
+            echo "Bitte räume auf oder passe das Pattern an."
+            exit 1
+          fi
+
+          src="${matches[0]}"
+          echo "Rename: ${src} -> ${PACKAGE_FIXED}"
+          mv -f "${src}" "${PACKAGE_FIXED}"
+
+      - name: Git add + commit if changed
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          git add "${PACKAGE_FIXED}"
+
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen im Index – kein Commit."
+          else
+            git commit -m "${COMMIT_MSG}"
+          fi
+
+      - name: Push work branch to origin (force-with-lease)
+        if: steps.upstream_check.outputs.should_continue == 'true'
+        run: |
+          git push origin "${WORK_BRANCH}" --force-with-lease
