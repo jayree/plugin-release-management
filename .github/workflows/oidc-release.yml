@@ -3,7 +3,7 @@ name: Update release-management package
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * 6' # Jeden Samstag 03:00 UTC
+    - cron: '0 3 * * *' # Täglich um 03:00 UTC
 
 permissions:
   contents: write
