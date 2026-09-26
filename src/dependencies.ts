@@ -48,7 +48,7 @@ const DEPENDENCIES: Dependency[] = [
   {
     name: 'NPM_TOKEN',
     type: 'env',
-    condition: (flags): boolean => !flags.dryrun && !flags.oidc,
+    condition: (flags): boolean => !flags.dryrun && !flags['trusted-publishing'],
   },
   {
     name: 'GH_TOKEN',

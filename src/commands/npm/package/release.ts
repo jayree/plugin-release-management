@@ -75,12 +75,9 @@ export default class Release extends SfCommand<ReleaseResult> {
       summary: messages.getMessage('flags.githubtag.summary'),
     }),
     'trusted-publishing': Flags.boolean({
+      aliases: ['oidc'],
       default: false,
       summary: messages.getMessage('flags.trusted-publishing.summary'),
-    }),
-    oidc: Flags.boolean({
-      default: false,
-      summary: messages.getMessage('flags.oidc.summary'),
     }),
   };
 
@@ -99,7 +96,6 @@ export default class Release extends SfCommand<ReleaseResult> {
     const pkg = await PackageRepo.create({
       ux: new Ux({ jsonEnabled: this.jsonEnabled() }),
       useprerelease: flags.prerelease,
-      useoidc: flags.oidc,
     });
 
     // With Trusted Publishing (OIDC) npm authenticates via the CI identity, so no token is written.
